@@ -14,7 +14,8 @@ install_dependencies() {
     NEED_CURL=0
     NEED_JQ=0
 
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # apk add --no-cache bash curl jq tzdata
+    if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "linux-musl" ]]; then
         # Detecting the distribution
         if [ -f /etc/os-release ]; then
             . /etc/os-release
@@ -49,6 +50,16 @@ install_dependencies() {
             suse|opensuse*)
                 [[ $NEED_CURL ]] && sudo zypper install curl
                 [[ $NEED_JQ ]] && sudo zypper install jq
+                ;;
+            alpine)
+                [[ $NEED_CURL || $NEED_JQ ]] && apk update
+                [[ $NEED_CURL ]] && apk add --no-cache curl
+                [[ $NEED_JQ ]] && apk add --no-cache jq
+                if ! command -v sudo &> /dev/null; then
+                  apk add --no-cache sudo
+                elif A=$(sudo -n -v 2>&1);test -z "$A" || echo "$A" |grep -q "password"; then
+                  echo "does not have sudo"
+                fi
                 ;;
             *)
                 echo "Unsupported Linux distribution"
@@ -145,6 +156,9 @@ WantedBy=multi-user.target"
         echo "$SERVICE_CONTENT" | sudo tee /etc/systemd/system/tado-assistant.service > /dev/null
         sudo systemctl enable tado-assistant.service
         sudo systemctl restart tado-assistant.service
+
+    elif [[ "$OSTYPE" == "linux-musl" ]]; then
+      echo "Alpine test"
 
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         LAUNCHD_CONTENT="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
